@@ -16,23 +16,19 @@ type faucet struct {
 	signer     *ethereum.SignKeys
 	authTypes  map[string]uint64
 	waitPeriod time.Duration
+	storage    *storage
 }
 
 // prepareFaucetPackage prepares a faucet package, including the signature, for the given address.
 // Returns the faucet package as a marshaled json byte array, ready to be sent to the user.
-func (f *faucet) prepareFaucetPackage(toAddr string, authTypeName string) ([]byte, error) {
-	if !common.IsHexAddress(toAddr) {
-		return nil, api.ErrParamToInvalid
-	}
-	to := common.HexToAddress(toAddr)
-
+func (f *faucet) prepareFaucetPackage(toAddr common.Address, authTypeName string) ([]byte, error) {
 	// check if the auth type is supported
 	if _, ok := f.authTypes[authTypeName]; !ok {
 		return nil, fmt.Errorf("auth type %s not supported", authTypeName)
 	}
 
 	// generate faucet package
-	fpackage, err := vochain.GenerateFaucetPackage(f.signer, to, f.authTypes[authTypeName])
+	fpackage, err := vochain.GenerateFaucetPackage(f.signer, toAddr, f.authTypes[authTypeName])
 	if err != nil {
 		return nil, api.ErrCantGenerateFaucetPkg.WithErr(err)
 	}

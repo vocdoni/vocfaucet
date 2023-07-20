@@ -49,8 +49,18 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if !ok || amount == 0 {
 		return fmt.Errorf("auth type open not supported")
 	}
-	data, err := f.prepareFaucetPackage(ctx.URLParam("to"), "open")
+	addr, err := stringToAddress(ctx.URLParam("to"))
 	if err != nil {
+		return err
+	}
+	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
+		return fmt.Errorf("address %s already funded, wait until %s", addr.Hex(), t)
+	}
+	data, err := f.prepareFaucetPackage(addr, "open")
+	if err != nil {
+		return err
+	}
+	if err := f.storage.addFundedAddress(addr); err != nil {
 		return err
 	}
 	return ctx.Send(data, apirest.HTTPstatusOK)

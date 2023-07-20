@@ -93,11 +93,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// init storage
+	storage, err := newStorage(*dataDir, *waitPeriod)
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	// create the faucet instance
 	f := faucet{
 		signer:     &signer,
 		authTypes:  authTypes,
 		waitPeriod: *waitPeriod,
+		storage:    storage,
 	}
 
 	// init API
