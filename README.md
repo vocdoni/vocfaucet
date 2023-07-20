@@ -7,7 +7,7 @@ Faucet backend for the Vocdoni networks.
 Example:
 
 ```
-go run . --auth=open --amounts=150
+go run . --auth=open --amounts=150 --waitPeriod=1m --listenPort=8080
 curl localhost:8080/v2/open/claim/0x658747A3eE4cb25D47cAfA3c106BeA4d559F6341
 ```
 
