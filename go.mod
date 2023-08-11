@@ -4,12 +4,13 @@ go 1.20
 
 require (
 	github.com/ethereum/go-ethereum v1.11.6
+	github.com/joho/godotenv v1.5.1
 	github.com/spf13/pflag v1.0.5
 	go.vocdoni.io/dvote v1.7.1-0.20230719125733-827f38491c86
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
-	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.2 // indirect
 	bazil.org/fuse v0.0.0-20200407214033-5883e5a4b512 // indirect
 	contrib.go.opencensus.io/exporter/prometheus v0.4.2 // indirect
 	github.com/766b/chi-prometheus v0.0.0-20211217152057-87afa9aa2ca8 // indirect
@@ -286,7 +287,6 @@ require (
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	gopkg.in/square/go-jose.v2 v2.5.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 	nhooyr.io/websocket v1.8.7 // indirect
 )

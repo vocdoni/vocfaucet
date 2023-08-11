@@ -32,8 +32,8 @@ func main() {
 	baseRoute := flag.String("baseRoute", "/v2", "base route for the API")
 	dataDir := flag.String("dataDir", "./vocfaucet-data", "data directory")
 	privKey := flag.String("privKey", "", "private key for the faucet signer (hexadecimal)")
-	auth := flag.String("auth", "open", "authentication types to use (comma separated)")
-	amounts := flag.String("amounts", "100", "tokens to send per request (comma separated), the order must match the auth types")
+	auth := flag.String("auth", "open,oauth", "authentication types to use (comma separated)")
+	amounts := flag.String("amounts", "100,200", "tokens to send per request (comma separated), the order must match the auth types")
 	waitPeriod := flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
 
 	flag.Usage = func() {
