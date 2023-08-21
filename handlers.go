@@ -42,8 +42,8 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 		}
 
 		if err := api.RegisterMethod(
-			"/oauth/authUrl/{provider}/{redirectURL}",
-			"GET",
+			"/oauth/authUrl/{provider}",
+			"POST",
 			apirest.MethodAccessTypePublic,
 			f.authOAuthUrl,
 		); err != nil {
@@ -130,7 +130,7 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	return ctx.Send(data, apirest.HTTPstatusOK)
 }
 
-func (f *faucet) authOAuthUrl(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	providers, err := oauthhandler.InitProviders()
 	if err != nil {
 		log.Warnw("error oAuth initializing providers", "err", err)
@@ -138,7 +138,16 @@ func (f *faucet) authOAuthUrl(_ *apirest.APIdata, ctx *httprouter.HTTPContext) e
 	}
 
 	requestedProvider := ctx.URLParam("provider")
-	redirectURL := ctx.URLParam("redirectURL")
+
+	type r struct {
+		RedirectURL string `json:"redirectURL"`
+	}
+	newAuthUrlRequest := r{}
+	if err := json.Unmarshal(msg.Data, &newAuthUrlRequest); err != nil {
+		return err
+	}
+
+	redirectURL := newAuthUrlRequest.RedirectURL
 	provider, ok := providers[requestedProvider]
 	if !ok {
 		log.Warnw("provider not found", "requestedProvider", requestedProvider)
