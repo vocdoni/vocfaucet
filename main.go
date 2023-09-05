@@ -11,6 +11,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"go.vocdoni.io/dvote/crypto/ethereum"
+	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/dvote/httprouter/apirest"
 	"go.vocdoni.io/dvote/log"
@@ -35,6 +36,7 @@ func main() {
 	auth := flag.String("auth", "open,oauth", "authentication types to use (comma separated)")
 	amounts := flag.String("amounts", "100,200", "tokens to send per request (comma separated), the order must match the auth types")
 	waitPeriod := flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
+	dbType := flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
 
 	flag.Usage = func() {
 		flag.PrintDefaults()
@@ -94,7 +96,7 @@ func main() {
 	}
 
 	// init storage
-	storage, err := newStorage(*dataDir, *waitPeriod)
+	storage, err := newStorage(*dbType, *dataDir, *waitPeriod)
 	if err != nil {
 		log.Fatal(err)
 	}

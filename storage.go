@@ -2,12 +2,14 @@ package main
 
 import (
 	"encoding/binary"
+	"fmt"
 	"path/filepath"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/db/metadb"
+	"go.vocdoni.io/dvote/db/prefixeddb"
 	"go.vocdoni.io/dvote/log"
 )
 
@@ -20,13 +22,19 @@ type storage struct {
 	waitPeriodSeconds uint64
 }
 
-func newStorage(dataDir string, waitPeriod time.Duration) (*storage, error) {
+func newStorage(dbType string, dataDir string, waitPeriod time.Duration) (*storage, error) {
+	if dbType != db.TypePebble && dbType != db.TypeLevelDB && dbType != db.TypeMongo {
+		return nil, fmt.Errorf("invalid dbType: %q. Available types: %q %q %q", dbType, db.TypePebble, db.TypeLevelDB, db.TypeMongo)
+	}
+
 	st := &storage{}
 	var err error
-	st.kv, err = metadb.New(db.TypePebble, filepath.Join(filepath.Clean(dataDir), "db"))
+	mdb, err := metadb.New(dbType, filepath.Join(filepath.Clean(dataDir), "db"))
 	if err != nil {
 		return nil, err
 	}
+
+	st.kv =  prefixeddb.NewPrefixedDatabase(mdb, []byte("faucet/"))
 	st.waitPeriodSeconds = uint64(waitPeriod.Seconds())
 	return st, nil
 }
