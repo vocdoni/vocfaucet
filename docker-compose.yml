@@ -23,7 +23,7 @@ services:
       net.core.somaxconn: 8128
     volumes:
       - vocfaucet:/app/data
-    restart: ${RESTART:-always}
+    restart: ${RESTART:-unless-stopped}
 
 volumes:
   vocfaucet: {}
