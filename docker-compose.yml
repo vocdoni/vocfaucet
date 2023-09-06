@@ -1,0 +1,29 @@
+version: '3.1'
+
+services:
+  vocfaucet:
+    build:
+      context: ./
+    image: ghcr.io/vocdoni/vocfaucet:${VOCFAUCET_TAG:-main}
+    env_file:
+      - .env
+    ports:
+      - 8080:8080
+    command:
+      - "--amounts=${AMOUNTS}"
+      - "--listenPort=8080"
+      - "--logLevel=${LOG_LEVEL}"
+      - "--privKey=${PRIV_KEY}"
+      - "--dataDir=/app/data/faucet"
+      - "--waitPeriod=${WAIT_PERIOD}"
+      - "--dbType=${DB_TYPE}"
+      - "--baseRoute=${BASE_ROUTE}"
+      - "--auth=${AUTH}"
+    sysctls:
+      net.core.somaxconn: 8128
+    volumes:
+      - vocfaucet:/app/data
+    restart: ${RESTART:-always}
+
+volumes:
+  vocfaucet: {}
