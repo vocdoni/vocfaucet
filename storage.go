@@ -34,7 +34,7 @@ func newStorage(dbType string, dataDir string, waitPeriod time.Duration) (*stora
 		return nil, err
 	}
 
-	st.kv =  prefixeddb.NewPrefixedDatabase(mdb, []byte("faucet/"))
+	st.kv = prefixeddb.NewPrefixedDatabase(mdb, []byte("faucet/"))
 	st.waitPeriodSeconds = uint64(waitPeriod.Seconds())
 	return st, nil
 }

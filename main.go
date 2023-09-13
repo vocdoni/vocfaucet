@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"path"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
 	flag "github.com/spf13/pflag"
+	"github.com/spf13/viper"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/httprouter"
@@ -23,38 +25,112 @@ var supportedAuthTypes = map[string]string{
 }
 
 func main() {
-	logLevel := flag.String("logLevel", "info", "log level")
-	tlsDomain := flag.String("tlsDomain", "", "domain for tls (implies listen to port 443)")
-	listenHost := flag.String("listenHost", "0.0.0.0", "host to listen on")
-	listenPort := flag.Int("listenPort", 8080, "port to listen on")
-	baseRoute := flag.String("baseRoute", "/v2", "base route for the API")
-	dataDir := flag.String("dataDir", "./vocfaucet-data", "data directory")
-	privKey := flag.String("privKey", "", "private key for the faucet signer (hexadecimal)")
-	auth := flag.String("auth", "open", "authentication types to use (comma separated): open, oauth")
-	amounts := flag.String("amounts", "100", "tokens to send per request (comma separated), the order must match the auth types")
-	waitPeriod := flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
-	dbType := flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
+	flag.String("logLevel", "info", "log level")
+	flag.String("tlsDomain", "", "domain for tls (implies listen to port 443)")
+	flag.String("listenHost", "0.0.0.0", "host to listen on")
+	flag.Int("listenPort", 8080, "port to listen on")
+	flag.String("baseRoute", "/v2", "base route for the API")
+	flag.String("dataDir", "./vocfaucet-data", "data directory")
+	flag.String("privKey", "", "private key for the faucet signer (hexadecimal)")
+	flag.String("auth", "open", "authentication types to use (comma separated): open, oauth")
+	flag.String("amounts", "100", "tokens to send per request (comma separated), the order must match the auth types")
+	flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
+	flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
+	flag.Parse()
 
-	flag.Usage = func() {
-		flag.PrintDefaults()
-		fmt.Println("\nAuthentication types supported:")
-		for k, v := range supportedAuthTypes {
-			fmt.Printf("  %s: %s\n", k, v)
-		}
-		fmt.Println()
+	// Setting up viper
+	viper := viper.New()
+	viper.SetConfigName("faucet")
+	viper.SetConfigType("yml")
+	viper.SetEnvPrefix("")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Set FlagVars first
+	if err := viper.BindPFlag("dataDir", flag.Lookup("dataDir")); err != nil {
+		panic(err)
+	}
+	dataDir := path.Clean(viper.GetString("dataDir"))
+	viper.AddConfigPath(dataDir)
+	fmt.Printf("Using path %s\n", dataDir)
+	if err := viper.BindPFlag("logLevel", flag.Lookup("logLevel")); err != nil {
+		panic(err)
+	}
+	logLevel := viper.GetString("logLevel")
+	log.Init(logLevel, "stdout", nil)
+	if err := viper.BindPFlag("tlsDomain", flag.Lookup("tlsDomain")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("listenHost", flag.Lookup("listenHost")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("listenPort", flag.Lookup("listenPort")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("baseRoute", flag.Lookup("baseRoute")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("privKey", flag.Lookup("privKey")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("auth", flag.Lookup("auth")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("amounts", flag.Lookup("amounts")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("waitPeriod", flag.Lookup("waitPeriod")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("dbType", flag.Lookup("dbType")); err != nil {
+		panic(err)
 	}
 
-	flag.Parse()
-	log.Init(*logLevel, "stdout", nil)
+	// check if config file exists
+	_, err := os.Stat(path.Join(dataDir, "faucet.yml"))
+	if os.IsNotExist(err) {
+		fmt.Printf("creating new config file in %s\n", dataDir)
+		// creting config folder if not exists
+		err = os.MkdirAll(dataDir, os.ModePerm)
+		if err != nil {
+			panic(fmt.Sprintf("cannot create data directory: %v", err))
+		}
+		// create config file if not exists
+		if err := viper.SafeWriteConfig(); err != nil {
+			panic(fmt.Sprintf("cannot write config file into config dir: %v", err))
+		}
+
+	} else {
+		// read config file
+		err = viper.ReadInConfig()
+		if err != nil {
+			panic(fmt.Sprintf("cannot read loaded config file in %s: %v", dataDir, err))
+		}
+	}
+	// save config file
+	if err := viper.WriteConfig(); err != nil {
+		panic(fmt.Sprintf("cannot write config file into config dir: %v", err))
+	}
+
+	// Set Viper/Flag variables
+	tlsDomain := viper.GetString("tlsDomain")
+	listenHost := viper.GetString("listenHost")
+	listenPort := viper.GetInt("listenPort")
+	baseRoute := viper.GetString("baseRoute")
+	privKey := viper.GetString("privKey")
+	auth := viper.GetString("auth")
+	amounts := viper.GetString("amounts")
+	waitPeriod := viper.GetDuration("waitPeriod")
+	dbType := viper.GetString("dbType")
 
 	// parse auth types and amounts
-	authNames := strings.Split(*auth, ",")
+	authNames := strings.Split(auth, ",")
 	for _, t := range authNames {
 		if _, ok := supportedAuthTypes[t]; !ok {
 			log.Fatalf("unsupported authentication type %s", t)
 		}
 	}
-	amountsStr := strings.Split(*amounts, ",")
+	amountsStr := strings.Split(amounts, ",")
 	if len(amountsStr) != len(authNames) {
 		log.Fatalf("amounts and auth types must have the same length")
 	}
@@ -71,8 +147,8 @@ func main() {
 
 	// initialize signer
 	signer := ethereum.SignKeys{}
-	if *privKey != "" {
-		if err := signer.AddHexKey(*privKey); err != nil {
+	if privKey != "" {
+		if err := signer.AddHexKey(privKey); err != nil {
 			log.Fatal(err)
 		}
 		log.Infof("faucet address is %s", signer.AddressString())
@@ -86,14 +162,14 @@ func main() {
 
 	// init HTTP router
 	var httpRouter httprouter.HTTProuter
-	httpRouter.TLSdomain = *tlsDomain
-	httpRouter.TLSdirCert = *dataDir
-	if err := httpRouter.Init(*listenHost, *listenPort); err != nil {
+	httpRouter.TLSdomain = tlsDomain
+	httpRouter.TLSdirCert = dataDir
+	if err := httpRouter.Init(listenHost, listenPort); err != nil {
 		log.Fatal(err)
 	}
 
 	// init storage
-	storage, err := newStorage(*dbType, *dataDir, *waitPeriod)
+	storage, err := newStorage(dbType, dataDir, waitPeriod)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -102,12 +178,12 @@ func main() {
 	f := faucet{
 		signer:     &signer,
 		authTypes:  authTypes,
-		waitPeriod: *waitPeriod,
+		waitPeriod: waitPeriod,
 		storage:    storage,
 	}
 
 	// init API
-	api, err := apirest.NewAPI(&httpRouter, *baseRoute)
+	api, err := apirest.NewAPI(&httpRouter, baseRoute)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -115,7 +191,7 @@ func main() {
 	// register handlers
 	f.registerHandlers(api)
 
-	log.Infof("API available at %s", *baseRoute)
+	log.Infof("API available at %s", baseRoute)
 	log.Info("startup complete")
 	// close if interrupt received
 	c := make(chan os.Signal, 1)
