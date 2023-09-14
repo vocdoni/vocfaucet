@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/joho/godotenv"
+	"github.com/spf13/viper"
 	"go.vocdoni.io/dvote/log"
 	"gopkg.in/yaml.v3"
 )
@@ -63,11 +63,9 @@ func NewProvider(name, authURL, tokenURL, profileURL, clientID, clientSecret, sc
 }
 
 func InitProviders() (map[string]*Provider, error) {
-	// Load the .env file
-	err := godotenv.Load()
-	if err != nil {
-		log.Errorw(err, "Error loading .env file")
-	}
+	// Load the environment variables.
+	viper := viper.New()
+	viper.AutomaticEnv()
 
 	// Read the configuration file.
 	filename := filepath.Join("oauthhandler", "config.yml")
@@ -91,8 +89,8 @@ func InitProviders() (map[string]*Provider, error) {
 			conf.AuthURL,
 			conf.TokenURL,
 			conf.ProfileURL,
-			os.Getenv(conf.ClientID),
-			os.Getenv(conf.ClientSecret),
+			viper.GetString(conf.ClientID),
+			viper.GetString(conf.ClientSecret),
 			conf.Scope,
 		)
 		providers[name] = provider
