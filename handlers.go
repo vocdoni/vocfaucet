@@ -119,7 +119,7 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	}
 	fmt.Println("Obtained oAuthToken: ", oAuthToken)
 
-	data, err := f.prepareFaucetPackage(addr, "open")
+	data, err := f.prepareFaucetPackage(addr, "oauth")
 	if err != nil {
 		return err
 	}
