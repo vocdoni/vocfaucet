@@ -23,5 +23,6 @@ RUN apt-get update && \
 
 WORKDIR /app
 COPY --from=builder /src/vocfaucet ./
+COPY --from=builder /src/oauthhandler/config.yml ./oauthhandler/config.yml
 
 ENTRYPOINT ["/app/vocfaucet"]
