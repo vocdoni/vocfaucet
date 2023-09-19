@@ -21,7 +21,7 @@ type faucet struct {
 
 // prepareFaucetPackage prepares a faucet package, including the signature, for the given address.
 // Returns the faucet package as a marshaled json byte array, ready to be sent to the user.
-func (f *faucet) prepareFaucetPackage(toAddr common.Address, authTypeName string) ([]byte, error) {
+func (f *faucet) prepareFaucetPackage(toAddr common.Address, authTypeName string) (*vfaucet.FaucetResponse, error) {
 	// check if the auth type is supported
 	if _, ok := f.authTypes[authTypeName]; !ok {
 		return nil, fmt.Errorf("auth type %s not supported", authTypeName)
@@ -40,13 +40,8 @@ func (f *faucet) prepareFaucetPackage(toAddr common.Address, authTypeName string
 		return nil, err
 	}
 	// send response
-	resp := &vfaucet.FaucetResponse{
+	return &vfaucet.FaucetResponse{
 		Amount:        fmt.Sprint(f.authTypes[authTypeName]),
 		FaucetPackage: fpackageBytes,
-	}
-	data, err := json.Marshal(resp)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
+	}, nil
 }
