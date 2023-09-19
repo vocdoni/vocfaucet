@@ -159,5 +159,5 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 	}
 
 	authURL := provider.GetAuthURL(redirectURL)
-	return ctx.Send(new(HandlerResponse).Set([]byte(authURL)).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(HandlerResponse).Set(authURL).MustMarshall(), apirest.HTTPstatusOK)
 }

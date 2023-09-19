@@ -19,14 +19,14 @@ const (
 
 // HandlerResponse is the response format for the Handlers
 type HandlerResponse struct {
-	Ok     bool        `json:"ok"`
-	Code   int         `json:"code"`
-	Reason string      `json:"reason"`
-	Data   interface{} `json:"data"`
+	Ok     bool   `json:"ok"`
+	Code   int    `json:"code"`
+	Reason string `json:"reason"`
+	Data   any    `json:"data"`
 }
 
 // Set sets the data for a successful response
-func (e *HandlerResponse) Set(data interface{}) *HandlerResponse {
+func (e *HandlerResponse) Set(data any) *HandlerResponse {
 	e.Data = data
 	e.Code = CodeOk
 	e.Ok = true
