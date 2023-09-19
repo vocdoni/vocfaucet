@@ -36,14 +36,14 @@ providers:
     auth_url: https://www.linkedin.com/oauth/v2/authorization
     token_url: https://www.linkedin.com/oauth/v2/accessToken
     profile_url: https://api.linkedin.com/v2/me
-    client_id: <your-linkedin-client-id>
-    client_secret: <your-linkedin-client-secret>
+    client_id: LINKEDIN_CLIENT_ID
+    client_secret: LINKEDIN_CLIENT_SECRET
     scope: r_emailaddress
   google:
     name: Google
     auth_url: https://accounts.google.com/o/oauth2/v2/auth
     token_url: https://oauth2.googleapis.com/token
     profile_url: https://www.googleapis.com/oauth2/v1/userinfo
-    client_id: <your-google-client-id>
-    client_secret: <your-google-client-secret>
+    client_id: GOOGLE_CLIENT_ID
+    client_secret: GOOGLE_CLIENT_SECRET
     scope: email

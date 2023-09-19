@@ -106,6 +106,7 @@ func (p *Provider) GetAuthURL(redirectURL string) string {
 	q.Set("client_id", p.ClientID)
 	q.Set("redirect_uri", redirectURL)
 	q.Set("scope", p.Scope)
+	q.Set("response_type", "token")
 	u.RawQuery = q.Encode()
 	return u.String()
 }
