@@ -5,8 +5,7 @@ import (
 )
 
 const (
-	CodeOk = 400
-
+	CodeOk                         = 200
 	CodeErrUnsupportedAuthType     = 401
 	ReasonErrUnsupportedAuthType   = "unsupported auth type"
 	CodeErrFlood                   = 402
@@ -21,8 +20,8 @@ const (
 type HandlerResponse struct {
 	Ok     bool   `json:"ok"`
 	Code   int    `json:"code"`
-	Reason string `json:"reason"`
-	Data   any    `json:"data"`
+	Reason string `json:"reason,omitempty"`
+	Data   any    `json:"data,omitempty"`
 }
 
 // Set sets the data for a successful response
