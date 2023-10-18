@@ -5,7 +5,6 @@ import (
 )
 
 const (
-	CodeOk                         = 200
 	CodeErrUnsupportedAuthType     = 401
 	ReasonErrUnsupportedAuthType   = "unsupported auth type"
 	CodeErrFlood                   = 402
@@ -14,38 +13,41 @@ const (
 	CodeErrOauthProviderNotFound   = 404
 	ReasonErrOauthProviderNotFound = "oAuth provider not found"
 	CodeErrOauthProviderError      = 405
+	ReasonErrOauthProviderError    = "error obtaining the oAuthToken"
 )
 
 // HandlerResponse is the response format for the Handlers
 type HandlerResponse struct {
-	Ok     bool   `json:"ok"`
-	Code   int    `json:"code"`
-	Reason string `json:"reason,omitempty"`
-	Data   any    `json:"data,omitempty"`
+	Error string `json:"error,omitempty"`
+	Data  any    `json:"data,omitempty"`
 }
 
 // Set sets the data for a successful response
 func (e *HandlerResponse) Set(data any) *HandlerResponse {
 	e.Data = data
-	e.Code = CodeOk
-	e.Ok = true
 	return e
 }
 
 // SetError sets the error code and reason for a failed response
-func (e *HandlerResponse) SetError(code int, reason string) *HandlerResponse {
-	e.Code = code
-	e.Reason = reason
-	e.Ok = false
+func (e *HandlerResponse) SetError(reason string) *HandlerResponse {
+	e.Error = reason
 	return e
 }
 
 // MustMarshall marshalls the response and panics if it fails
 func (e *HandlerResponse) MustMarshall() []byte {
-	data, err := json.Marshal(e)
-	if err != nil {
-		panic(err)
+	var data []byte
+	var err error
+	if e.Error != "" {
+		data, err = json.Marshal(e)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		data, err = json.Marshal(e.Data)
+		if err != nil {
+			panic(err)
+		}
 	}
-
 	return data
 }

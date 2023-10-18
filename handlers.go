@@ -70,7 +70,7 @@ func (f *faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	amount, ok := f.authTypes["open"]
 	if !ok || amount == 0 {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrUnsupportedAuthType, ReasonErrUnsupportedAuthType).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrUnsupportedAuthType).MustMarshall(), CodeErrUnsupportedAuthType)
 	}
 	addr, err := stringToAddress(ctx.URLParam("to"))
 	if err != nil {
@@ -78,7 +78,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	}
 	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrFlood, errReason).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
 	data, err := f.prepareFaucetPackage(addr, "open")
 	if err != nil {
@@ -102,13 +102,13 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	}
 	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrFlood, errReason).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
 
 	// Convert the provided "code" to an oAuth Token
 	providers, err := oauthhandler.InitProviders()
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrInitProviders, ReasonErrInitProviders).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
 	}
 
 	requestedProvider := ctx.URLParam("provider")
@@ -116,12 +116,12 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	redirectURL := ctx.URLParam("redirectURL")
 	provider, ok := providers[requestedProvider]
 	if !ok {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrOauthProviderNotFound, ReasonErrOauthProviderNotFound).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
 
 	_, err = provider.GetOAuthToken(oAuthCode, redirectURL)
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrOauthProviderError, "error obtaining the oAuthToken").MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
 	}
 
 	data, err := f.prepareFaucetPackage(addr, "oauth")
@@ -139,7 +139,7 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	providers, err := oauthhandler.InitProviders()
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrInitProviders, ReasonErrInitProviders).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
 	}
 
 	requestedProvider := ctx.URLParam("provider")
@@ -155,7 +155,7 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 	redirectURL := newAuthUrlRequest.RedirectURL
 	provider, ok := providers[requestedProvider]
 	if !ok {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrOauthProviderNotFound, ReasonErrOauthProviderNotFound).MustMarshall(), apirest.HTTPstatusBadRequest)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
 
 	authURL := provider.GetAuthURL(redirectURL)
