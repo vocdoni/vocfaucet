@@ -158,6 +158,9 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
 
-	authURL := provider.GetAuthURL(redirectURL)
+	type urlResponse struct{
+		Url string `json:"url"`
+	}
+	authURL := urlResponse{Url: provider.GetAuthURL(redirectURL)}
 	return ctx.Send(new(HandlerResponse).Set(authURL).MustMarshall(), apirest.HTTPstatusOK)
 }
