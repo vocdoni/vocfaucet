@@ -44,7 +44,12 @@ func VerifyAragonDaoRequest(data string, signature types.HexBytes) (common.Addre
 	return addr, nil
 }
 
-func IsAragonDaoAddress(addr common.Address) (bool, error) {
+
+func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
+	if network != "mainnet" && network != "goerli" && network != "sepolia" && network != "polygon" && network != "mumbai" {
+		return false, errors.New("network not supported")
+	}
+
 	query := []byte(`
 		query DaoMembers($address: String, $address2: Bytes) {
 			multisigPlugins(where: {members_: {address: $address}}) {
@@ -64,7 +69,10 @@ func IsAragonDaoAddress(addr common.Address) (bool, error) {
 			}
 		}
 	`)
-	graphURL := "https://subgraph.satsuma-prod.com/qHR2wGfc5RLi6/aragon/osx-mainnet/version/v1.3.0/api"
+
+	// use the network to determine the subgraphURL
+	graphURL := "https://subgraph.satsuma-prod.com/qHR2wGfc5RLi6/aragon/osx-" + string(network) + "/version/v1.3.0/api"
+
 	variables := map[string]interface{}{
 		"address":  addr,
 		"address2": addr,

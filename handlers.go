@@ -163,7 +163,7 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 	}
 	newAuthUrlRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newAuthUrlRequest); err != nil {
-		return err
+		return ctx.Send(new(HandlerResponse).SetError(CodeErrIncorrectParams, err.Error()).MustMarshall(), apirest.HTTPstatusBadRequest)
 	}
 
 	redirectURL := newAuthUrlRequest.RedirectURL
@@ -190,10 +190,11 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	type r struct {
 		Data      string         `json:"data"`
 		Signature types.HexBytes `json:"signature"`
+		Network   string         `json:"network"`
 	}
 	newRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newRequest); err != nil {
-		return err
+		return ctx.Send(new(HandlerResponse).SetError(CodeErrIncorrectParams, err.Error()).MustMarshall(), apirest.HTTPstatusBadRequest)
 	}
 
 	// Obtains the URL and verifies the signature is from today
@@ -209,17 +210,31 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	}
 
 	// Check if the address is an Aragon DAO address by checking to AragonGraphQL
-	if isAragonDao, err := aragondaohandler.IsAragonDaoAddress(addr); !isAragonDao {
-		return ctx.Send(new(HandlerResponse).SetError(CodeErrAragonDaoAddress, err.Error()).MustMarshall(), apirest.HTTPstatusBadRequest)
+	if newRequest.Network != "" {
+		if isAragonDao, _ := aragondaohandler.IsAragonDaoAddress(addr, newRequest.Network); !isAragonDao {
+			return ctx.Send(new(HandlerResponse).SetError(CodeErrAragonDaoAddress, ReasonErrAragonDaoAddress).MustMarshall(), apirest.HTTPstatusBadRequest)
+		}
+	}else{ // Check all networks
+		found := false
+		networks := []string{"mainnet", "goerli", "sepolia", "polygon", "mumbai"}
+		for _, network := range networks {
+			if isAragonDao, _ := aragondaohandler.IsAragonDaoAddress(addr, network); isAragonDao {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return ctx.Send(new(HandlerResponse).SetError(CodeErrAragonDaoAddress, ReasonErrAragonDaoAddress).MustMarshall(), apirest.HTTPstatusBadRequest)
+		}
 	}
 
 	data, err := f.prepareFaucetPackage(addr, "aragondao")
 	if err != nil {
-		return err
+		return ctx.Send(new(HandlerResponse).SetError(CodeErrInternalError, err.Error()).MustMarshall(), apirest.HTTPstatusBadRequest)
 	}
 
 	if err := f.storage.addFundedAddress(addr); err != nil {
-		return err
+		return ctx.Send(new(HandlerResponse).SetError(CodeErrInternalError, err.Error()).MustMarshall(), apirest.HTTPstatusBadRequest)
 	}
 
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
