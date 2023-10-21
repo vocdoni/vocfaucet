@@ -20,8 +20,9 @@ import (
 )
 
 var supportedAuthTypes = map[string]string{
-	"open":  "without authentication, anyone can use the faucet",
-	"oauth": "with oauth2 authentication",
+	"open":      "without authentication, anyone can use the faucet",
+	"oauth":     "with oauth2 authentication",
+	"aragondao": "signed message from addresses belonging to at least one aragon dao",
 }
 
 func main() {
