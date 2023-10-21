@@ -14,6 +14,8 @@ const (
 	ReasonErrOauthProviderNotFound = "oAuth provider not found"
 	CodeErrOauthProviderError      = 405
 	ReasonErrOauthProviderError    = "error obtaining the oAuthToken"
+	CodeErrAragonDaoSignature      = 406
+	CodeErrAragonDaoAddress        = 407
 )
 
 // HandlerResponse is the response format for the Handlers
