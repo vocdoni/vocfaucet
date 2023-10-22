@@ -44,7 +44,6 @@ func VerifyAragonDaoRequest(data string, signature types.HexBytes) (common.Addre
 	return addr, nil
 }
 
-
 func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
 	if network != "mainnet" && network != "goerli" && network != "sepolia" && network != "polygon" && network != "mumbai" {
 		return false, errors.New("network not supported")
