@@ -16,8 +16,8 @@ const (
 	ReasonErrOauthProviderError    = "error obtaining the oAuthToken"
 	CodeErrAragonDaoSignature      = 406
 	CodeErrAragonDaoAddress        = 407
-	CodeErrIncorrectParams		   = 408
-	CodeErrInternalError		   = 409
+	CodeErrIncorrectParams         = 408
+	CodeErrInternalError           = 409
 	ReasonErrAragonDaoAddress      = "could not find the signer address in any Aragon DAO"
 )
 
