@@ -69,13 +69,8 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 
 // Returns the list of supported auth types
 func (f *faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
-	data, err := json.Marshal(
-		&AuthTypes{
-			AuthTypes: f.authTypes,
-		},
-	)
-	if err != nil {
-		panic(err) // should not happen
+	data := &AuthTypes{
+		AuthTypes: f.authTypes,
 	}
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
