@@ -6,6 +6,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -45,7 +46,7 @@ func VerifyAragonDaoRequest(data string, signature types.HexBytes) (common.Addre
 }
 
 func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
-	if network != "mainnet" && network != "goerli" && network != "sepolia" && network != "polygon" && network != "mumbai" {
+	if _, ok := ValidNetworks[network]; !ok {
 		return false, errors.New("network not supported")
 	}
 
@@ -70,7 +71,7 @@ func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
 	`)
 
 	// use the network to determine the subgraphURL
-	graphURL := "https://subgraph.satsuma-prod.com/qHR2wGfc5RLi6/aragon/osx-" + string(network) + "/version/v1.3.0/api"
+	graphURL := strings.Replace(aragonGraphURL, "{NETWORK}", network, 1)
 
 	variables := map[string]interface{}{
 		"address":  addr,
@@ -106,27 +107,7 @@ func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
 	}
 
 	// Parse the JSON response
-	type Response struct {
-		Data struct {
-			MultisigPlugins []struct {
-				Members []struct {
-					Address string `json:"address"`
-				} `json:"members"`
-			} `json:"multisigPlugins"`
-			TokenVotingPlugins []struct {
-				Members []struct {
-					Address string `json:"address"`
-				} `json:"members"`
-			} `json:"tokenVotingPlugins"`
-			AddresslistVotingPlugins []struct {
-				Members []struct {
-					Address string `json:"address"`
-				} `json:"members"`
-			} `json:"addresslistVotingPlugins"`
-		} `json:"data"`
-	}
-
-	response := Response{}
+	response := SubgraphMembersResponse{}
 	if err := json.Unmarshal(body, &response); err != nil {
 		return false, err
 	}

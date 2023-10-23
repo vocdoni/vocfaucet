@@ -211,8 +211,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 		}
 	} else { // Check all networks
 		found := false
-		networks := []string{"mainnet", "goerli", "sepolia", "polygon", "mumbai"}
-		for _, network := range networks {
+		for network := range aragondaohandler.ValidNetworks {
 			if isAragonDao, _ := aragondaohandler.IsAragonDaoAddress(addr, network); isAragonDao {
 				found = true
 				break
