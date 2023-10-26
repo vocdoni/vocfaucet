@@ -153,7 +153,7 @@ func (p *Provider) GetOAuthToken(code string, redirectURL string) (*OAuthToken, 
 	}
 
 	if token.AccessToken == "" {
-		log.Warnw("token.AccessToken is empty")
+		log.Warnw("token.AccessToken is empty.", "body", string(body))
 		return nil, fmt.Errorf("token.AccessToken is empty")
 	}
 
