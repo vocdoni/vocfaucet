@@ -85,7 +85,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
+	if funded, t := f.storage.checkIsFundedAddress(addr, "open"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -93,7 +93,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if err := f.storage.addFundedAddress(addr); err != nil {
+	if err := f.storage.addFundedAddress(addr, "open"); err != nil {
 		return err
 	}
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
@@ -109,7 +109,7 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
+	if funded, t := f.storage.checkIsFundedAddress(addr, "oauth"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -137,7 +137,7 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 	if err != nil {
 		return err
 	}
-	if err := f.storage.addFundedAddress(addr); err != nil {
+	if err := f.storage.addFundedAddress(addr, "oauth"); err != nil {
 		return err
 	}
 
@@ -199,7 +199,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	}
 
 	// Check if the address is already funded
-	if funded, t := f.storage.checkIsFundedAddress(addr); funded {
+	if funded, t := f.storage.checkIsFundedAddress(addr, "aragon"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -227,7 +227,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 
-	if err := f.storage.addFundedAddress(addr); err != nil {
+	if err := f.storage.addFundedAddress(addr, "aragon"); err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 

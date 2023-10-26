@@ -41,13 +41,14 @@ func newStorage(dbType string, dataDir string, waitPeriod time.Duration) (*stora
 
 // addFundedAddress adds the given address to the funded addresses list, with the current time
 // as the wait period end time.
-func (st *storage) addFundedAddress(addr common.Address) error {
+func (st *storage) addFundedAddress(addr common.Address, authType string) error {
 	tx := st.kv.WriteTx()
 	defer tx.Discard()
+	key := append([]byte(fundedAddressPrefix), append(addr.Bytes(), []byte(authType)...)...)
 	wp := uint64(time.Now().Unix()) + st.waitPeriodSeconds
 	wpBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(wpBytes, wp)
-	if err := tx.Set(append([]byte(fundedAddressPrefix), addr.Bytes()...), wpBytes); err != nil {
+	if err := tx.Set(key, wpBytes); err != nil {
 		log.Error(err)
 	}
 	return tx.Commit()
@@ -56,8 +57,9 @@ func (st *storage) addFundedAddress(addr common.Address) error {
 // checkIsFundedAddress checks if the given address is funded and returns true if it is, within
 // the wait period time window. Otherwise, it returns false.
 // The second return value is the wait period end time, if the address is funded.
-func (st *storage) checkIsFundedAddress(addr common.Address) (bool, time.Time) {
-	wpBytes, err := st.kv.Get(append([]byte(fundedAddressPrefix), addr.Bytes()...))
+func (st *storage) checkIsFundedAddress(addr common.Address, authType string) (bool, time.Time) {
+	key := append([]byte(fundedAddressPrefix), append(addr.Bytes(), []byte(authType)...)...)
+	wpBytes, err := st.kv.Get(key)
 	if err != nil {
 		return false, time.Time{}
 	}
