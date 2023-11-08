@@ -100,13 +100,14 @@ func InitProviders() (map[string]*Provider, error) {
 }
 
 // GetAuthURL returns the OAuth authorize URL for the provider.
-func (p *Provider) GetAuthURL(redirectURL string) string {
+func (p *Provider) GetAuthURL(redirectURL string, state string) string {
 	u, _ := url.Parse(p.AuthURL)
 	q := u.Query()
 	q.Set("client_id", p.ClientID)
 	q.Set("redirect_uri", redirectURL)
 	q.Set("scope", p.Scope)
-	q.Set("response_type", "token")
+	q.Set("response_type", "code")
+	q.Set("state", state)
 	u.RawQuery = q.Encode()
 	return u.String()
 }
@@ -118,7 +119,12 @@ func (p *Provider) GetOAuthToken(code string, redirectURL string) (*OAuthToken, 
 	data.Set("client_id", p.ClientID)
 	data.Set("client_secret", p.ClientSecret)
 	data.Set("redirect_uri", redirectURL)
-	data.Set("code", code)
+
+	unescapedCode, err := url.QueryUnescape(code)
+	if err != nil {
+		return nil, err
+	}
+	data.Set("code", unescapedCode)
 
 	req, err := http.NewRequest("POST", p.TokenURL, strings.NewReader(data.Encode()))
 	if err != nil {
@@ -143,6 +149,7 @@ func (p *Provider) GetOAuthToken(code string, redirectURL string) (*OAuthToken, 
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
+		log.Warnw("failed to get OAuth token", "body", string(body))
 		return nil, fmt.Errorf("failed to get OAuth token: %s", body)
 	}
 

@@ -155,13 +155,13 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 
 	type r struct {
 		RedirectURL string `json:"redirectURL"`
+		State       string `json:"state"`
 	}
 	newAuthUrlRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newAuthUrlRequest); err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
 	}
 
-	redirectURL := newAuthUrlRequest.RedirectURL
 	provider, ok := providers[requestedProvider]
 	if !ok {
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
@@ -170,7 +170,7 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 	type urlResponse struct {
 		Url string `json:"url"`
 	}
-	authURL := urlResponse{Url: provider.GetAuthURL(redirectURL)}
+	authURL := urlResponse{Url: provider.GetAuthURL(newAuthUrlRequest.RedirectURL, newAuthUrlRequest.State)}
 	return ctx.Send(new(HandlerResponse).Set(authURL).MustMarshall(), apirest.HTTPstatusOK)
 }
 
