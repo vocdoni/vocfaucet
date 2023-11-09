@@ -170,7 +170,7 @@ func main() {
 	}
 
 	// init storage
-	storage, err := newStorage(dbType, dataDir, waitPeriod)
+	storage, err := newStorage(dbType, dataDir, waitPeriod, signer.Address().Bytes()[:8])
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -22,11 +23,11 @@ type storage struct {
 	waitPeriodSeconds uint64
 }
 
-func newStorage(dbType string, dataDir string, waitPeriod time.Duration) (*storage, error) {
+func newStorage(dbType string, dataDir string, waitPeriod time.Duration, dbPrefix []byte) (*storage, error) {
 	if dbType != db.TypePebble && dbType != db.TypeLevelDB && dbType != db.TypeMongo {
 		return nil, fmt.Errorf("invalid dbType: %q. Available types: %q %q %q", dbType, db.TypePebble, db.TypeLevelDB, db.TypeMongo)
 	}
-
+	log.Infow("create db storage", "type", dbType, "dir", dataDir, "prefix", hex.EncodeToString(dbPrefix))
 	st := &storage{}
 	var err error
 	mdb, err := metadb.New(dbType, filepath.Join(filepath.Clean(dataDir), "db"))
@@ -34,7 +35,7 @@ func newStorage(dbType string, dataDir string, waitPeriod time.Duration) (*stora
 		return nil, err
 	}
 
-	st.kv = prefixeddb.NewPrefixedDatabase(mdb, []byte("faucet/"))
+	st.kv = prefixeddb.NewPrefixedDatabase(mdb, dbPrefix)
 	st.waitPeriodSeconds = uint64(waitPeriod.Seconds())
 	return st, nil
 }
