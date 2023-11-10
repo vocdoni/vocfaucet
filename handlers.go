@@ -37,8 +37,8 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 
 	if f.authTypes["oauth"] > 0 {
 		if err := api.RegisterMethod(
-			"/oauth/claim/{provider}/{code}/{to}",
-			"GET",
+			"/oauth/claim",
+			"POST",
 			apirest.MethodAccessTypePublic,
 			f.authOAuthHandler,
 		); err != nil {
@@ -46,7 +46,7 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 		}
 
 		if err := api.RegisterMethod(
-			"/oauth/authUrl/{provider}",
+			"/oauth/authUrl",
 			"POST",
 			apirest.MethodAccessTypePublic,
 			f.authOAuthUrl,
@@ -100,12 +100,24 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 }
 
 // oAuth faucet handler
-func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	amount, ok := f.authTypes["oauth"]
 	if !ok || amount == 0 {
 		return ctx.Send([]byte("auth type oAuth not supported"), apirest.HTTPstatusInternalErr)
 	}
-	addr, err := stringToAddress(ctx.URLParam("to"))
+
+	type r struct {
+		Provider    string `json:"provider"`
+		Code        string `json:"code"`
+		RedirectURL string `json:"redirectURL"`
+		Recipient   string `json:"recipient"`
+	}
+	newRequest := r{}
+	if err := json.Unmarshal(msg.Data, &newRequest); err != nil {
+		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
+	}
+
+	addr, err := stringToAddress(newRequest.Recipient)
 	if err != nil {
 		return err
 	}
@@ -120,15 +132,12 @@ func (f *faucet) authOAuthHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContex
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
 	}
 
-	requestedProvider := ctx.URLParam("provider")
-	oAuthCode := ctx.URLParam("code")
-	redirectURL := ctx.URLParam("redirectURL")
-	provider, ok := providers[requestedProvider]
+	provider, ok := providers[newRequest.Provider]
 	if !ok {
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
 
-	_, err = provider.GetOAuthToken(oAuthCode, redirectURL)
+	_, err = provider.GetOAuthToken(newRequest.Code, newRequest.RedirectURL)
 	if err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
 	}
@@ -151,9 +160,8 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
 	}
 
-	requestedProvider := ctx.URLParam("provider")
-
 	type r struct {
+		Provider    string `json:"provider"`
 		RedirectURL string `json:"redirectURL"`
 		State       string `json:"state"`
 	}
@@ -162,7 +170,7 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
 	}
 
-	provider, ok := providers[requestedProvider]
+	provider, ok := providers[newAuthUrlRequest.Provider]
 	if !ok {
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
