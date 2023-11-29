@@ -71,7 +71,9 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 func (f *faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	data := &AuthTypes{
 		AuthTypes: f.authTypes,
+		Wait:      uint64(f.waitPeriod.Seconds()),
 	}
+
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
 
