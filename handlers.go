@@ -70,8 +70,10 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 // Returns the list of supported auth types
 func (f *faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	data := &AuthTypes{
-		AuthTypes: f.authTypes,
+		AuthTypes:   f.authTypes,
+		WaitSeconds: uint64(f.waitPeriod.Seconds()),
 	}
+
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
 
