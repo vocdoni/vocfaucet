@@ -22,24 +22,26 @@ type Config struct {
 
 // ProviderConfig represents the configuration for an OAuth provider.
 type ProviderConfig struct {
-	Name         string `yaml:"name"`
-	AuthURL      string `yaml:"auth_url"`
-	TokenURL     string `yaml:"token_url"`
-	ProfileURL   string `yaml:"profile_url"`
-	ClientID     string `yaml:"client_id"`
-	ClientSecret string `yaml:"client_secret"`
-	Scope        string `yaml:"scope"`
+	Name          string `yaml:"name"`
+	AuthURL       string `yaml:"auth_url"`
+	TokenURL      string `yaml:"token_url"`
+	ProfileURL    string `yaml:"profile_url"`
+	ClientID      string `yaml:"client_id"`
+	ClientSecret  string `yaml:"client_secret"`
+	Scope         string `yaml:"scope"`
+	UsernameField string `yaml:"username_field"`
 }
 
 // Provider is the OAuth provider.
 type Provider struct {
-	Name         string
-	AuthURL      string
-	TokenURL     string
-	ProfileURL   string
-	ClientID     string
-	ClientSecret string
-	Scope        string
+	Name          string
+	AuthURL       string
+	TokenURL      string
+	ProfileURL    string
+	ClientID      string
+	ClientSecret  string
+	Scope         string
+	UsernameField string
 }
 
 // OAuthToken is the OAuth token.
@@ -50,15 +52,16 @@ type OAuthToken struct {
 }
 
 // NewProvider creates a new OAuth provider.
-func NewProvider(name, authURL, tokenURL, profileURL, clientID, clientSecret, scope string) *Provider {
+func NewProvider(name, authURL, tokenURL, profileURL, clientID, clientSecret, scope string, usernameField string) *Provider {
 	return &Provider{
-		Name:         name,
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
-		ProfileURL:   profileURL,
-		ClientID:     clientID,
-		ClientSecret: clientSecret,
-		Scope:        scope,
+		Name:          name,
+		AuthURL:       authURL,
+		TokenURL:      tokenURL,
+		ProfileURL:    profileURL,
+		ClientID:      clientID,
+		ClientSecret:  clientSecret,
+		Scope:         scope,
+		UsernameField: usernameField,
 	}
 }
 
@@ -92,6 +95,7 @@ func InitProviders() (map[string]*Provider, error) {
 			viper.GetString(conf.ClientID),
 			viper.GetString(conf.ClientSecret),
 			conf.Scope,
+			conf.UsernameField,
 		)
 		providers[name] = provider
 	}

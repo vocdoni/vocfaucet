@@ -87,7 +87,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFundedAddress(addr, "open"); funded {
+	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "open"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -95,7 +95,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if err := f.storage.addFundedAddress(addr, "open"); err != nil {
+	if err := f.storage.addFunded(addr.Bytes(), "open"); err != nil {
 		return err
 	}
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
@@ -123,7 +123,7 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFundedAddress(addr, "oauth"); funded {
+	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "oauth"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -139,16 +139,41 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
 	}
 
-	_, err = provider.GetOAuthToken(newRequest.Code, newRequest.RedirectURL)
+	token, err := provider.GetOAuthToken(newRequest.Code, newRequest.RedirectURL)
 	if err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+	}
+
+	profileRaw, err := provider.GetOAuthProfile(token)
+	if err != nil {
+		log.Warnw("error obtaining the profile", "err", err)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+	}
+
+	var profile map[string]interface{}
+	if err := json.Unmarshal(profileRaw, &profile); err != nil {
+		log.Warnw("error marshalling the profile", "err", err)
+		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+	}
+
+	// Check if the oauth profile is already funded
+	fundedProfileField := profile[provider.UsernameField].(string)
+	fundedAuthType := "oauth_" + newRequest.Provider
+	if funded, t := f.storage.checkIsFunded([]byte(fundedProfileField), fundedAuthType); funded {
+		errReason := fmt.Sprintf("user %s already funded, wait until %s", fundedProfileField, t)
+		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
 
 	data, err := f.prepareFaucetPackage(addr, "oauth")
 	if err != nil {
 		return err
 	}
-	if err := f.storage.addFundedAddress(addr, "oauth"); err != nil {
+
+	// Add address and profile to the funded list
+	if err := f.storage.addFunded(addr.Bytes(), "oauth"); err != nil {
+		return err
+	}
+	if err := f.storage.addFunded([]byte(fundedProfileField), fundedAuthType); err != nil {
 		return err
 	}
 
@@ -209,7 +234,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	}
 
 	// Check if the address is already funded
-	if funded, t := f.storage.checkIsFundedAddress(addr, "aragon"); funded {
+	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "aragon"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -237,7 +262,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 
-	if err := f.storage.addFundedAddress(addr, "aragon"); err != nil {
+	if err := f.storage.addFunded(addr.Bytes(), "aragon"); err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 

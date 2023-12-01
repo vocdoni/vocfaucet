@@ -7,6 +7,7 @@ providers:
     client_id: FACEBOOK_CLIENT_ID
     client_secret: FACEBOOK_CLIENT_SECRET
     scope: email
+    username_field: email
   github:
     name: Github
     auth_url: https://github.com/login/oauth/authorize
@@ -15,6 +16,7 @@ providers:
     client_id: GITHUB_CLIENT_ID
     client_secret: GITHUB_CLIENT_SECRET
     scope: user:email
+    username_field: login
   twitter:
     name: Twitter
     auth_url: https://api.twitter.com/oauth/authenticate
@@ -47,3 +49,4 @@ providers:
     client_id: GOOGLE_CLIENT_ID
     client_secret: GOOGLE_CLIENT_SECRET
     scope: email
+    username_field: id

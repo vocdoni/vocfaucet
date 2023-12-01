@@ -7,15 +7,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/db/metadb"
 	"go.vocdoni.io/dvote/db/prefixeddb"
 	"go.vocdoni.io/dvote/log"
-)
-
-const (
-	fundedAddressPrefix = "a_"
 )
 
 type storage struct {
@@ -40,12 +35,12 @@ func newStorage(dbType string, dataDir string, waitPeriod time.Duration, dbPrefi
 	return st, nil
 }
 
-// addFundedAddress adds the given address to the funded addresses list, with the current time
+// addFunded adds the given text to the funded list, with the current time
 // as the wait period end time.
-func (st *storage) addFundedAddress(addr common.Address, authType string) error {
+func (st *storage) addFunded(text []byte, authType string) error {
 	tx := st.kv.WriteTx()
 	defer tx.Discard()
-	key := append([]byte(fundedAddressPrefix), append(addr.Bytes(), []byte(authType)...)...)
+	key := append(text, []byte(authType)...)
 	wp := uint64(time.Now().Unix()) + st.waitPeriodSeconds
 	wpBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(wpBytes, wp)
@@ -55,11 +50,10 @@ func (st *storage) addFundedAddress(addr common.Address, authType string) error 
 	return tx.Commit()
 }
 
-// checkIsFundedAddress checks if the given address is funded and returns true if it is, within
+// checkIsFunded checks if the given text is funded and returns true if it is, within
 // the wait period time window. Otherwise, it returns false.
-// The second return value is the wait period end time, if the address is funded.
-func (st *storage) checkIsFundedAddress(addr common.Address, authType string) (bool, time.Time) {
-	key := append([]byte(fundedAddressPrefix), append(addr.Bytes(), []byte(authType)...)...)
+func (st *storage) checkIsFunded(text []byte, authType string) (bool, time.Time) {
+	key := append(text, []byte(authType)...)
 	wpBytes, err := st.kv.Get(key)
 	if err != nil {
 		return false, time.Time{}
