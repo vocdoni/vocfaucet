@@ -35,12 +35,12 @@ func newStorage(dbType string, dataDir string, waitPeriod time.Duration, dbPrefi
 	return st, nil
 }
 
-// addFunded adds the given text to the funded list, with the current time
+// addFundedUserID adds the given userID to the funded list, with the current time
 // as the wait period end time.
-func (st *storage) addFunded(text []byte, authType string) error {
+func (st *storage) addFundedUserID(userID []byte, authType string) error {
 	tx := st.kv.WriteTx()
 	defer tx.Discard()
-	key := append(text, []byte(authType)...)
+	key := append(userID, []byte(authType)...)
 	wp := uint64(time.Now().Unix()) + st.waitPeriodSeconds
 	wpBytes := make([]byte, 8)
 	binary.LittleEndian.PutUint64(wpBytes, wp)
@@ -50,10 +50,10 @@ func (st *storage) addFunded(text []byte, authType string) error {
 	return tx.Commit()
 }
 
-// checkIsFunded checks if the given text is funded and returns true if it is, within
+// checkIsFundedUserID checks if the given text is funded and returns true if it is, within
 // the wait period time window. Otherwise, it returns false.
-func (st *storage) checkIsFunded(text []byte, authType string) (bool, time.Time) {
-	key := append(text, []byte(authType)...)
+func (st *storage) checkIsFundedUserID(userID []byte, authType string) (bool, time.Time) {
+	key := append(userID, []byte(authType)...)
 	wpBytes, err := st.kv.Get(key)
 	if err != nil {
 		return false, time.Time{}

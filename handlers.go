@@ -87,7 +87,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "open"); funded {
+	if funded, t := f.storage.checkIsFundedUserID(addr.Bytes(), "open"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -95,7 +95,7 @@ func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext
 	if err != nil {
 		return err
 	}
-	if err := f.storage.addFunded(addr.Bytes(), "open"); err != nil {
+	if err := f.storage.addFundedUserID(addr.Bytes(), "open"); err != nil {
 		return err
 	}
 	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
@@ -123,7 +123,7 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "oauth"); funded {
+	if funded, t := f.storage.checkIsFundedUserID(addr.Bytes(), "oauth"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -159,7 +159,7 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	// Check if the oauth profile is already funded
 	fundedProfileField := profile[provider.UsernameField].(string)
 	fundedAuthType := "oauth_" + newRequest.Provider
-	if funded, t := f.storage.checkIsFunded([]byte(fundedProfileField), fundedAuthType); funded {
+	if funded, t := f.storage.checkIsFundedUserID([]byte(fundedProfileField), fundedAuthType); funded {
 		errReason := fmt.Sprintf("user %s already funded, wait until %s", fundedProfileField, t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -170,10 +170,10 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	}
 
 	// Add address and profile to the funded list
-	if err := f.storage.addFunded(addr.Bytes(), "oauth"); err != nil {
+	if err := f.storage.addFundedUserID(addr.Bytes(), "oauth"); err != nil {
 		return err
 	}
-	if err := f.storage.addFunded([]byte(fundedProfileField), fundedAuthType); err != nil {
+	if err := f.storage.addFundedUserID([]byte(fundedProfileField), fundedAuthType); err != nil {
 		return err
 	}
 
@@ -234,7 +234,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	}
 
 	// Check if the address is already funded
-	if funded, t := f.storage.checkIsFunded(addr.Bytes(), "aragon"); funded {
+	if funded, t := f.storage.checkIsFundedUserID(addr.Bytes(), "aragon"); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
 		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
 	}
@@ -262,7 +262,7 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 
-	if err := f.storage.addFunded(addr.Bytes(), "aragon"); err != nil {
+	if err := f.storage.addFundedUserID(addr.Bytes(), "aragon"); err != nil {
 		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
 	}
 
