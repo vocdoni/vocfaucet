@@ -10,6 +10,12 @@ type AuthTypes struct {
 
 var errAddressAlreadyFunded = fmt.Errorf("address already funded")
 
+const (
+	AuthTypeOpen      = "open"
+	AuthTypeOauth     = "oauth"
+	AuthTypeAragonDao = "aragondao"
+)
+
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
