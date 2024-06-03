@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/vocdoni/vocfaucet/storage"
 	"go.vocdoni.io/dvote/api"
 	vfaucet "go.vocdoni.io/dvote/api/faucet"
 	"go.vocdoni.io/dvote/crypto/ethereum"
@@ -16,7 +17,7 @@ type faucet struct {
 	signer     *ethereum.SignKeys
 	authTypes  map[string]uint64
 	waitPeriod time.Duration
-	storage    *storage
+	storage    *storage.Storage
 }
 
 // prepareFaucetPackage prepares a faucet package, including the signature, for the given address.

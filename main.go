@@ -12,6 +12,7 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/vocdoni/vocfaucet/storage"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/httprouter"
@@ -170,7 +171,7 @@ func main() {
 	}
 
 	// init storage
-	storage, err := newStorage(dbType, dataDir, waitPeriod, signer.Address().Bytes()[:8])
+	storage, err := storage.New(dbType, dataDir, waitPeriod, signer.Address().Bytes()[:8])
 	if err != nil {
 		log.Fatal(err)
 	}
