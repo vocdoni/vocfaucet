@@ -6,6 +6,7 @@ require (
 	github.com/ethereum/go-ethereum v1.13.4
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.16.0
+	github.com/stripe/stripe-go/v78 v78.3.0
 	go.vocdoni.io/dvote v1.10.0
 	gopkg.in/yaml.v3 v3.0.1
 )

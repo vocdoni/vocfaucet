@@ -1,4 +1,4 @@
-package main
+package faucet
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/vocdoni/vocfaucet/aragondaohandler"
+	hr "github.com/vocdoni/vocfaucet/handlersresponse"
+	"github.com/vocdoni/vocfaucet/helpers"
 	"github.com/vocdoni/vocfaucet/oauthhandler"
 	"go.vocdoni.io/dvote/httprouter"
 	"go.vocdoni.io/dvote/httprouter/apirest"
@@ -14,7 +16,7 @@ import (
 )
 
 // Register the handlers URLs
-func (f *faucet) registerHandlers(api *apirest.API) {
+func (f *Faucet) RegisterHandlers(api *apirest.API) {
 	if err := api.RegisterMethod(
 		"/authTypes",
 		"GET",
@@ -24,7 +26,7 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 		log.Fatal(err)
 	}
 
-	if f.authTypes[AuthTypeOpen] > 0 {
+	if f.AuthTypes[AuthTypeOpen] > 0 {
 		if err := api.RegisterMethod(
 			"/open/claim/{to}",
 			"GET",
@@ -35,7 +37,7 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 		}
 	}
 
-	if f.authTypes[AuthTypeOauth] > 0 {
+	if f.AuthTypes[AuthTypeOauth] > 0 {
 		if err := api.RegisterMethod(
 			"/oauth/claim",
 			"POST",
@@ -55,7 +57,7 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 		}
 	}
 
-	if f.authTypes[AuthTypeAragonDao] > 0 {
+	if f.AuthTypes[AuthTypeAragonDao] > 0 {
 		if err := api.RegisterMethod(
 			"/aragondao/claim",
 			"POST",
@@ -68,42 +70,42 @@ func (f *faucet) registerHandlers(api *apirest.API) {
 }
 
 // Returns the list of supported auth types
-func (f *faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+func (f *Faucet) authTypesHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	data := &AuthTypes{
-		AuthTypes:   f.authTypes,
-		WaitSeconds: uint64(f.waitPeriod.Seconds()),
+		AuthTypes:   f.AuthTypes,
+		WaitSeconds: uint64(f.WaitPeriod.Seconds()),
 	}
 
-	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(hr.HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
 
-// Open faucet handler (does no logic but flood protection)
-func (f *faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
-	amount, ok := f.authTypes[AuthTypeOpen]
+// Open Faucet handler (does no logic but flood protection)
+func (f *Faucet) authOpenHandler(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+	amount, ok := f.AuthTypes[AuthTypeOpen]
 	if !ok || amount == 0 {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrUnsupportedAuthType).MustMarshall(), CodeErrUnsupportedAuthType)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrUnsupportedAuthType).MustMarshall(), hr.CodeErrUnsupportedAuthType)
 	}
-	addr, err := stringToAddress(ctx.URLParam("to"))
+	addr, err := helpers.StringToAddress(ctx.URLParam("to"))
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeOpen); funded {
+	if funded, t := f.Storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeOpen); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
-		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
+		return ctx.Send(new(hr.HandlerResponse).SetError(errReason).MustMarshall(), hr.CodeErrFlood)
 	}
 	data, err := f.prepareFaucetPackage(addr, AuthTypeOpen)
 	if err != nil {
 		return err
 	}
-	if err := f.storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeOpen); err != nil {
+	if err := f.Storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeOpen); err != nil {
 		return err
 	}
-	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(hr.HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
 
-// oAuth faucet handler
-func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
-	amount, ok := f.authTypes[AuthTypeOauth]
+// oAuth Faucet handler
+func (f *Faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+	amount, ok := f.AuthTypes[AuthTypeOauth]
 	if !ok || amount == 0 {
 		return ctx.Send([]byte("auth type oAuth not supported"), apirest.HTTPstatusInternalErr)
 	}
@@ -116,52 +118,52 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	}
 	newRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newRequest); err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrIncorrectParams)
 	}
 
-	addr, err := stringToAddress(newRequest.Recipient)
+	addr, err := helpers.StringToAddress(newRequest.Recipient)
 	if err != nil {
 		return err
 	}
-	if funded, t := f.storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeOauth); funded {
+	if funded, t := f.Storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeOauth); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
-		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
+		return ctx.Send(new(hr.HandlerResponse).SetError(errReason).MustMarshall(), hr.CodeErrFlood)
 	}
 
 	// Convert the provided "code" to an oAuth Token
 	providers, err := oauthhandler.InitProviders()
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrInitProviders).MustMarshall(), hr.CodeErrInitProviders)
 	}
 
 	provider, ok := providers[newRequest.Provider]
 	if !ok {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrOauthProviderNotFound).MustMarshall(), hr.CodeErrOauthProviderNotFound)
 	}
 
 	token, err := provider.GetOAuthToken(newRequest.Code, newRequest.RedirectURL)
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrOauthProviderError).MustMarshall(), hr.CodeErrOauthProviderError)
 	}
 
 	profileRaw, err := provider.GetOAuthProfile(token)
 	if err != nil {
 		log.Warnw("error obtaining the profile", "err", err)
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrOauthProviderError).MustMarshall(), hr.CodeErrOauthProviderError)
 	}
 
 	var profile map[string]interface{}
 	if err := json.Unmarshal(profileRaw, &profile); err != nil {
 		log.Warnw("error marshalling the profile", "err", err)
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderError).MustMarshall(), CodeErrOauthProviderError)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrOauthProviderError).MustMarshall(), hr.CodeErrOauthProviderError)
 	}
 
 	// Check if the oauth profile is already funded
 	fundedProfileField := profile[provider.UsernameField].(string)
 	fundedAuthType := "oauth_" + newRequest.Provider
-	if funded, t := f.storage.CheckFundedUserWithWaitTime([]byte(fundedProfileField), fundedAuthType); funded {
+	if funded, t := f.Storage.CheckFundedUserWithWaitTime([]byte(fundedProfileField), fundedAuthType); funded {
 		errReason := fmt.Sprintf("user %s already funded, wait until %s", fundedProfileField, t)
-		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
+		return ctx.Send(new(hr.HandlerResponse).SetError(errReason).MustMarshall(), hr.CodeErrFlood)
 	}
 
 	data, err := f.prepareFaucetPackage(addr, AuthTypeOauth)
@@ -170,21 +172,21 @@ func (f *faucet) authOAuthHandler(msg *apirest.APIdata, ctx *httprouter.HTTPCont
 	}
 
 	// Add address and profile to the funded list
-	if err := f.storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeOauth); err != nil {
+	if err := f.Storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeOauth); err != nil {
 		return err
 	}
-	if err := f.storage.AddFundedUserWithWaitTime([]byte(fundedProfileField), fundedAuthType); err != nil {
+	if err := f.Storage.AddFundedUserWithWaitTime([]byte(fundedProfileField), fundedAuthType); err != nil {
 		return err
 	}
 
-	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(hr.HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
 
-// oAuth faucet handler (returns the oAuth URL)
-func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+// oAuth Faucet handler (returns the oAuth URL)
+func (f *Faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	providers, err := oauthhandler.InitProviders()
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrInitProviders).MustMarshall(), CodeErrInitProviders)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrInitProviders).MustMarshall(), hr.CodeErrInitProviders)
 	}
 
 	type r struct {
@@ -194,25 +196,25 @@ func (f *faucet) authOAuthUrl(msg *apirest.APIdata, ctx *httprouter.HTTPContext)
 	}
 	newAuthUrlRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newAuthUrlRequest); err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrIncorrectParams)
 	}
 
 	provider, ok := providers[newAuthUrlRequest.Provider]
 	if !ok {
-		return ctx.Send(new(HandlerResponse).SetError(ReasonErrOauthProviderNotFound).MustMarshall(), CodeErrOauthProviderNotFound)
+		return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrOauthProviderNotFound).MustMarshall(), hr.CodeErrOauthProviderNotFound)
 	}
 
 	type urlResponse struct {
 		Url string `json:"url"`
 	}
 	authURL := urlResponse{Url: provider.GetAuthURL(newAuthUrlRequest.RedirectURL, newAuthUrlRequest.State)}
-	return ctx.Send(new(HandlerResponse).Set(authURL).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(hr.HandlerResponse).Set(authURL).MustMarshall(), apirest.HTTPstatusOK)
 }
 
-func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+func (f *Faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	var err error
 
-	amount, ok := f.authTypes[AuthTypeAragonDao]
+	amount, ok := f.AuthTypes[AuthTypeAragonDao]
 	if !ok || amount == 0 {
 		return ctx.Send([]byte("auth type AragonDao not supported"), apirest.HTTPstatusInternalErr)
 	}
@@ -224,25 +226,25 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 	}
 	newRequest := r{}
 	if err := json.Unmarshal(msg.Data, &newRequest); err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrIncorrectParams)
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrIncorrectParams)
 	}
 
 	// Obtains the URL and verifies the signature is from today
 	var addr common.Address
 	if addr, err = aragondaohandler.VerifyAragonDaoRequest(newRequest.Data, newRequest.Signature); err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrAragonDaoSignature)
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrAragonDaoSignature)
 	}
 
 	// Check if the address is already funded
-	if funded, t := f.storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeAragonDao); funded {
+	if funded, t := f.Storage.CheckFundedUserWithWaitTime(addr.Bytes(), AuthTypeAragonDao); funded {
 		errReason := fmt.Sprintf("address %s already funded, wait until %s", addr.Hex(), t)
-		return ctx.Send(new(HandlerResponse).SetError(errReason).MustMarshall(), CodeErrFlood)
+		return ctx.Send(new(hr.HandlerResponse).SetError(errReason).MustMarshall(), hr.CodeErrFlood)
 	}
 
 	// Check if the address is an Aragon DAO address by checking to AragonGraphQL
 	if newRequest.Network != "" {
 		if isAragonDao, _ := aragondaohandler.IsAragonDaoAddress(addr, newRequest.Network); !isAragonDao {
-			return ctx.Send(new(HandlerResponse).SetError(ReasonErrAragonDaoAddress).MustMarshall(), CodeErrAragonDaoAddress)
+			return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrAragonDaoAddress).MustMarshall(), hr.CodeErrAragonDaoAddress)
 		}
 	} else { // Check all networks
 		found := false
@@ -253,18 +255,18 @@ func (f *faucet) authAragonDaoHandler(msg *apirest.APIdata, ctx *httprouter.HTTP
 			}
 		}
 		if !found {
-			return ctx.Send(new(HandlerResponse).SetError(ReasonErrAragonDaoAddress).MustMarshall(), CodeErrAragonDaoAddress)
+			return ctx.Send(new(hr.HandlerResponse).SetError(hr.ReasonErrAragonDaoAddress).MustMarshall(), hr.CodeErrAragonDaoAddress)
 		}
 	}
 
 	data, err := f.prepareFaucetPackage(addr, AuthTypeAragonDao)
 	if err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrInternalError)
 	}
 
-	if err := f.storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeAragonDao); err != nil {
-		return ctx.Send(new(HandlerResponse).SetError(err.Error()).MustMarshall(), CodeErrInternalError)
+	if err := f.Storage.AddFundedUserWithWaitTime(addr.Bytes(), AuthTypeAragonDao); err != nil {
+		return ctx.Send(new(hr.HandlerResponse).SetError(err.Error()).MustMarshall(), hr.CodeErrInternalError)
 	}
 
-	return ctx.Send(new(HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
+	return ctx.Send(new(hr.HandlerResponse).Set(data).MustMarshall(), apirest.HTTPstatusOK)
 }
