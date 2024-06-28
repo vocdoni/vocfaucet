@@ -73,7 +73,7 @@ func (st *Storage) AddFundedUserWithWaitTime(userID []byte, authType string) err
 	return tx.Commit()
 }
 
-// CheckFundedUserWithWaitTime checks if the given text is funded and returns true if it is, within
+// checkIsFundedUserID checks if the given text is funded and returns true if it is, within
 // the wait period time window. Otherwise, it returns false.
 func (st *Storage) CheckFundedUserWithWaitTime(userID []byte, authType string) (bool, time.Time) {
 	key := append(userID, []byte(authType)...)
@@ -83,4 +83,42 @@ func (st *Storage) CheckFundedUserWithWaitTime(userID []byte, authType string) (
 	}
 	wp := binary.LittleEndian.Uint64(wpBytes)
 	return wp >= uint64(time.Now().Unix()), time.Unix(int64(wp), 0)
+}
+
+// AddPendingStripeSession adds a pending Stripe session to the storage.
+// It takes a sessionID string as a parameter and returns an error if any.
+func (st *Storage) AddPendingStripeSession(sessionID string) error {
+	tx := st.kv.WriteTx()
+	defer tx.Discard()
+	if err := tx.Set([]byte(sessionID), []byte("true")); err != nil {
+		log.Error(err)
+	}
+	return tx.Commit()
+}
+
+// GetPendingStripeSession retrieves the pending status of a Stripe session by session ID.
+// It returns a boolean indicating whether the session is pending and an error, if any.
+func (st *Storage) GetPendingStripeSession(sessionID string) (bool, error) {
+	data, err := st.kv.Get([]byte(sessionID))
+	if err != nil {
+		if err == db.ErrKeyNotFound {
+			return false, nil
+		}
+		return false, err
+	}
+	if string(data) == "true" {
+		return true, nil
+	}
+	return false, nil
+}
+
+// RemovePendingStripeSession removes a pending Stripe session from the storage.
+// It takes a sessionID as a parameter and returns an error if any occurred.
+func (st *Storage) RemovePendingStripeSession(sessionID string) error {
+	tx := st.kv.WriteTx()
+	defer tx.Discard()
+	if err := tx.Delete([]byte(sessionID)); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
