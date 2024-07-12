@@ -1,4 +1,4 @@
-package main
+package handlersresponse
 
 import (
 	"encoding/json"
@@ -19,6 +19,8 @@ const (
 	CodeErrIncorrectParams         = 408
 	CodeErrInternalError           = 409
 	ReasonErrAragonDaoAddress      = "could not find the signer address in any Aragon DAO"
+	CodeErrProviderError           = 410
+	ReasonErrProviderError         = "error obtaining the oAuthToken"
 )
 
 // HandlerResponse is the response format for the Handlers

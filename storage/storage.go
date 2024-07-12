@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"go.vocdoni.io/dvote/db"
@@ -17,6 +18,7 @@ import (
 type Storage struct {
 	kv                db.Database
 	waitPeriodSeconds uint64
+	lock              sync.RWMutex
 }
 
 // New creates a new storage instance.
@@ -40,6 +42,8 @@ func New(dbType string, dataDir string, waitPeriod time.Duration, dbPrefix []byt
 
 // Set sets the given key to the given value.
 func (st *Storage) Set(key, value []byte) error {
+	st.lock.Lock()
+	defer st.lock.Unlock()
 	tx := st.kv.WriteTx()
 	defer tx.Discard()
 	if err := tx.Set(key, value); err != nil {
@@ -50,7 +54,21 @@ func (st *Storage) Set(key, value []byte) error {
 
 // Get gets the value for the given key.
 func (st *Storage) Get(key []byte) ([]byte, error) {
+	st.lock.RLock()
+	defer st.lock.RUnlock()
 	return st.kv.Get(key)
+}
+
+// Delete removes an existing value based on the given key
+func (st *Storage) Delete(key []byte) error {
+	st.lock.Lock()
+	defer st.lock.Unlock()
+	tx := st.kv.WriteTx()
+	defer tx.Discard()
+	if err := tx.Delete(key); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Close closes the storage.
@@ -73,7 +91,7 @@ func (st *Storage) AddFundedUserWithWaitTime(userID []byte, authType string) err
 	return tx.Commit()
 }
 
-// CheckFundedUserWithWaitTime checks if the given text is funded and returns true if it is, within
+// checkIsFundedUserID checks if the given text is funded and returns true if it is, within
 // the wait period time window. Otherwise, it returns false.
 func (st *Storage) CheckFundedUserWithWaitTime(userID []byte, authType string) (bool, time.Time) {
 	key := append(userID, []byte(authType)...)

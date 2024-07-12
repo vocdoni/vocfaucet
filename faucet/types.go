@@ -1,4 +1,4 @@
-package main
+package faucet
 
 import "fmt"
 
@@ -14,6 +14,7 @@ const (
 	AuthTypeOpen      = "open"
 	AuthTypeOauth     = "oauth"
 	AuthTypeAragonDao = "aragondao"
+	AuthTypeStripe    = "stripe"
 )
 
 type ErrorResponse struct {

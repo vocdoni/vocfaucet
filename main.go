@@ -12,7 +12,9 @@ import (
 
 	flag "github.com/spf13/pflag"
 	"github.com/spf13/viper"
+	"github.com/vocdoni/vocfaucet/faucet"
 	"github.com/vocdoni/vocfaucet/storage"
+	"github.com/vocdoni/vocfaucet/stripehandler"
 	"go.vocdoni.io/dvote/crypto/ethereum"
 	"go.vocdoni.io/dvote/db"
 	"go.vocdoni.io/dvote/httprouter"
@@ -24,6 +26,7 @@ var supportedAuthTypes = map[string]string{
 	"open":      "without authentication, anyone can use the faucet",
 	"oauth":     "with oauth2 authentication",
 	"aragondao": "signed message from addresses belonging to at least one aragon dao",
+	"stripe":    "with stripe payment",
 }
 
 func main() {
@@ -38,6 +41,11 @@ func main() {
 	flag.String("amounts", "100", "tokens to send per request (comma separated), the order must match the auth types")
 	flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
 	flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
+	flag.String("stripeKey", "", "stripe secret key")
+	flag.String("stripePriceId", "", "stripe price id")
+	flag.Int64("stripeMinQuantity", 100, "stripe min number of tokens")
+	flag.Int64("stripeMaxQuantity", 100000, "stripe max number of tokens")
+	flag.String("stripeWebhookSecret", "", "stripe webhook secret key")
 	flag.Parse()
 
 	// Setting up viper
@@ -87,6 +95,21 @@ func main() {
 	if err := viper.BindPFlag("dbType", flag.Lookup("dbType")); err != nil {
 		panic(err)
 	}
+	if err := viper.BindPFlag("stripeKey", flag.Lookup("stripeKey")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("stripePriceId", flag.Lookup("stripePriceId")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("stripeMinQuantity", flag.Lookup("stripeMinQuantity")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("stripeMaxQuantity", flag.Lookup("stripeMaxQuantity")); err != nil {
+		panic(err)
+	}
+	if err := viper.BindPFlag("stripeWebhookSecret", flag.Lookup("stripeWebhookSecret")); err != nil {
+		panic(err)
+	}
 
 	// check if config file exists
 	_, err := os.Stat(path.Join(dataDir, "faucet.yml"))
@@ -122,8 +145,14 @@ func main() {
 	privKey := viper.GetString("privKey")
 	auth := viper.GetString("auth")
 	amounts := viper.GetString("amounts")
+
 	waitPeriod := viper.GetDuration("waitPeriod")
 	dbType := viper.GetString("dbType")
+	stripeKey := viper.GetString("stripeKey")
+	stripePriceId := viper.GetString("stripePriceId")
+	stripeMinQuantity := viper.GetInt64("stripeMinQuantity")
+	stripeMaxQuantity := viper.GetInt64("stripeMaxQuantity")
+	stripeWebhookSecret := viper.GetString("stripeWebhookSecret")
 
 	// parse auth types and amounts
 	authNames := strings.Split(auth, ",")
@@ -175,13 +204,30 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// create the faucet instance
-	f := faucet{
-		signer:     &signer,
-		authTypes:  authTypes,
-		waitPeriod: waitPeriod,
-		storage:    storage,
+	f := faucet.Faucet{
+		Signer:     &signer,
+		AuthTypes:  authTypes,
+		WaitPeriod: waitPeriod,
+		Storage:    storage,
+	}
+	var s *stripehandler.StripeHandler
+	if amount := f.AuthTypes[faucet.AuthTypeStripe]; amount > 0 {
+		s, err = stripehandler.NewStripeClient(
+			stripeKey,
+			stripePriceId,
+			stripeWebhookSecret,
+			stripeMinQuantity,
+			stripeMaxQuantity,
+			int64(amount),
+			&f,
+			storage,
+		)
+		if err != nil {
+			log.Fatalf("stripe initialization error: %s", err)
+		} else {
+			log.Infof("stripe enabled with price id %s", stripePriceId)
+		}
 	}
 
 	// init API
@@ -191,8 +237,8 @@ func main() {
 	}
 
 	// register handlers
-	f.registerHandlers(api)
-
+	f.RegisterHandlers(api)
+	s.RegisterHandlers(api)
 	log.Infof("API available at %s", baseRoute)
 	log.Info("startup complete")
 	// close if interrupt received
