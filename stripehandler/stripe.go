@@ -3,9 +3,11 @@ package stripehandler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/stripe/stripe-go/v78"
 	"github.com/stripe/stripe-go/v78/checkout/session"
+	"github.com/stripe/stripe-go/v78/price"
 	"github.com/stripe/stripe-go/v78/webhook"
 	"github.com/vocdoni/vocfaucet/faucet"
 	"github.com/vocdoni/vocfaucet/storage"
@@ -60,17 +62,25 @@ func NewStripeClient(key, priceId, webhookSecret string, minQuantity, maxQuantit
 // The function constructs a stripe.CheckoutSessionParams object with the provided parameters and creates a new session using the session.New function.
 // If the session creation is successful, it returns the session pointer, otherwise it returns an error.
 func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL, referral string) (*stripe.CheckoutSession, error) {
+	// search corresponding price tokens package
+	packName := fmt.Sprintf("pack_%d", defaultAmount)
+	priceParams := &stripe.PriceListParams{LookupKeys: []*string{&packName}}
+	priceList := price.List(priceParams).PriceList()
+	// iterate price result
+	if len(priceList.Data) == 0 {
+		return nil, nil
+	}
 	params := &stripe.CheckoutSessionParams{
 		ClientReferenceID: stripe.String(to),
 		UIMode:            stripe.String("embedded"),
+		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
 		ReturnURL:         stripe.String(returnURL + "/{CHECKOUT_SESSION_ID}"),
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
-				Price: stripe.String(s.PriceId),
-				AdjustableQuantity: &stripe.CheckoutSessionLineItemAdjustableQuantityParams{
-					Enabled: stripe.Bool(true),
-					Minimum: stripe.Int64(s.MinQuantity),
-					Maximum: stripe.Int64(s.MaxQuantity),
+				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
+					Product:           &priceList.Data[0].Product.ID,
+					Currency:          (*string)(&priceList.Data[0].Currency),
+					UnitAmountDecimal: &priceList.Data[0].UnitAmountDecimal,
 				},
 				Quantity: stripe.Int64(defaultAmount),
 			},
@@ -79,7 +89,6 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 			"to":       to,
 			"referral": referral,
 		},
-		Mode: stripe.String(string(stripe.CheckoutSessionModePayment)),
 	}
 	ses, err := session.New(params)
 	if err != nil {
