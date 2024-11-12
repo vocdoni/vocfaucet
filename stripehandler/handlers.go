@@ -55,7 +55,6 @@ func (s *StripeHandler) RegisterHandlers(api *apirest.API) {
 // createCheckoutSession creates a new Stripe Checkout session
 func (s *StripeHandler) createCheckoutSession(msg *apirest.APIdata, ctx *httprouter.HTTPContext) error {
 	to := ctx.URLParam("to")
-	// referral := ctx.URLParam("referral")
 	defaultAmount := s.DefaultAmount
 	if amount := ctx.URLParam("amount"); amount != "" {
 		var err error
@@ -89,6 +88,8 @@ func (s *StripeHandler) createCheckoutSession(msg *apirest.APIdata, ctx *httprou
 }
 
 func (s *StripeHandler) retrieveCheckoutSession(_ *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+	s.SessionLock.Lock()
+	defer s.SessionLock.Unlock()
 	sessionId := ctx.URLParam("session_id")
 	status, err := s.RetrieveCheckoutSession(sessionId)
 	if err != nil {
@@ -110,6 +111,8 @@ func (s *StripeHandler) retrieveCheckoutSession(_ *apirest.APIdata, ctx *httprou
 }
 
 func (s *StripeHandler) handleWebhook(apiData *apirest.APIdata, ctx *httprouter.HTTPContext) error {
+	s.SessionLock.Lock()
+	defer s.SessionLock.Unlock()
 	sig := ctx.Request.Header.Get("Stripe-Signature")
 	// Pass the request body and Stripe-Signature header to ConstructEvent, along with the webhook signing key
 	sessionId, err := s.HandleWebhook(apiData, sig)

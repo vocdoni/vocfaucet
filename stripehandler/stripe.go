@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sync"
 
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/checkout/session"
@@ -24,6 +25,7 @@ type StripeHandler struct {
 	WebhookSecret string           // The secret used to verify Stripe webhook events.
 	Storage       *storage.Storage // The storage instance for the faucet.
 	Faucet        *faucet.Faucet   // The faucet instance.
+	SessionLock   sync.RWMutex     // The lock for the session.
 }
 
 // ReturnStatus represents the response status and data returned by the client.
