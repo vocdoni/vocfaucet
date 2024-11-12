@@ -77,6 +77,9 @@ func (s *StripeHandler) createCheckoutSession(msg *apirest.APIdata, ctx *httprou
 		errReason := fmt.Sprintf("session.New: %v", err)
 		return ctx.Send(new(hr.HandlerResponse).SetError(errReason).MustMarshall(), hr.CodeErrProviderError)
 	}
+	if sess == nil {
+		return ctx.Send(new(hr.HandlerResponse).SetError("session.New: nil session").MustMarshall(), hr.CodeErrProviderError)
+	}
 	data := &struct {
 		ClientSecret string `json:"clientSecret"`
 	}{

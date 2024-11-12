@@ -5,10 +5,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/stripe/stripe-go/v78"
-	"github.com/stripe/stripe-go/v78/checkout/session"
-	"github.com/stripe/stripe-go/v78/price"
-	"github.com/stripe/stripe-go/v78/webhook"
+	"github.com/stripe/stripe-go/v81"
+	"github.com/stripe/stripe-go/v81/checkout/session"
+	"github.com/stripe/stripe-go/v81/price"
+	"github.com/stripe/stripe-go/v81/webhook"
 	"github.com/vocdoni/vocfaucet/faucet"
 	"github.com/vocdoni/vocfaucet/storage"
 	"go.vocdoni.io/dvote/httprouter/apirest"
@@ -64,7 +64,7 @@ func NewStripeClient(key, priceId, webhookSecret string, minQuantity, maxQuantit
 func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL, referral string) (*stripe.CheckoutSession, error) {
 	// search corresponding price tokens package
 	packName := fmt.Sprintf("pack_%d", defaultAmount)
-	priceParams := &stripe.PriceListParams{LookupKeys: []*string{&packName}}
+	priceParams := &stripe.PriceListParams{Active: stripe.Bool(true), LookupKeys: []*string{stripe.String(packName)}}
 	priceList := price.List(priceParams).PriceList()
 	// iterate price result
 	if len(priceList.Data) == 0 {
@@ -82,7 +82,7 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 					Currency:          (*string)(&priceList.Data[0].Currency),
 					UnitAmountDecimal: &priceList.Data[0].UnitAmountDecimal,
 				},
-				Quantity: stripe.Int64(defaultAmount),
+				Quantity: stripe.Int64(1),
 			},
 		},
 		Metadata: map[string]string{
