@@ -42,7 +42,7 @@ func main() {
 	flag.Duration("waitPeriod", 1*time.Hour, "wait period between requests for the same user")
 	flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
 	flag.String("stripeKey", "", "stripe secret key")
-	flag.String("stripePriceId", "", "stripe price id")
+	flag.String("stripeProductID", "", "stripe price id")
 	flag.Int64("stripeMinQuantity", 100, "stripe min number of tokens")
 	flag.Int64("stripeMaxQuantity", 100000, "stripe max number of tokens")
 	flag.String("stripeWebhookSecret", "", "stripe webhook secret key")
@@ -98,7 +98,7 @@ func main() {
 	if err := viper.BindPFlag("stripeKey", flag.Lookup("stripeKey")); err != nil {
 		panic(err)
 	}
-	if err := viper.BindPFlag("stripePriceId", flag.Lookup("stripePriceId")); err != nil {
+	if err := viper.BindPFlag("stripeProductID", flag.Lookup("stripeProductID")); err != nil {
 		panic(err)
 	}
 	if err := viper.BindPFlag("stripeMinQuantity", flag.Lookup("stripeMinQuantity")); err != nil {
@@ -149,7 +149,7 @@ func main() {
 	waitPeriod := viper.GetDuration("waitPeriod")
 	dbType := viper.GetString("dbType")
 	stripeKey := viper.GetString("stripeKey")
-	stripePriceId := viper.GetString("stripePriceId")
+	stripeProductID := viper.GetString("stripeProductID")
 	stripeMinQuantity := viper.GetInt64("stripeMinQuantity")
 	stripeMaxQuantity := viper.GetInt64("stripeMaxQuantity")
 	stripeWebhookSecret := viper.GetString("stripeWebhookSecret")
@@ -215,7 +215,7 @@ func main() {
 	if amount := f.AuthTypes[faucet.AuthTypeStripe]; amount > 0 {
 		s, err = stripehandler.NewStripeClient(
 			stripeKey,
-			stripePriceId,
+			stripeProductID,
 			stripeWebhookSecret,
 			stripeMinQuantity,
 			stripeMaxQuantity,
@@ -226,7 +226,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("stripe initialization error: %s", err)
 		} else {
-			log.Infof("stripe enabled with price id %s", stripePriceId)
+			log.Infof("stripe enabled with price id %s", stripeProductID)
 		}
 	}
 

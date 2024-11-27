@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
+	"sort"
 	"sync"
 
 	"github.com/stripe/stripe-go/v81"
@@ -18,7 +20,7 @@ import (
 // StripeHandler represents the configuration for the stripe a provider for handling Stripe payments.
 type StripeHandler struct {
 	Key           string           // The API key for the Stripe account.
-	PriceId       string           // The ID of the price associated with the product.
+	ProductID     string           // The ID of the price associated with the product.
 	MinQuantity   int64            // The minimum quantity allowed for the product.
 	MaxQuantity   int64            // The maximum quantity allowed for the product.
 	DefaultAmount int64            // The default amount for the product.
@@ -40,13 +42,13 @@ type ReturnStatus struct {
 // NewStripeClient creates a new instance of the StripeHandler struct with the provided parameters.
 // It sets the Stripe API key, price ID, webhook secret, minimum quantity, maximum quantity, and default amount.
 // Returns a pointer to the created StripeHandler.
-func NewStripeClient(key, priceId, webhookSecret string, minQuantity, maxQuantity, defaultAmount int64, faucet *faucet.Faucet, storage *storage.Storage) (*StripeHandler, error) {
-	if key == "" || priceId == "" || webhookSecret == "" || storage == nil {
+func NewStripeClient(key, productID, webhookSecret string, minQuantity, maxQuantity, defaultAmount int64, faucet *faucet.Faucet, storage *storage.Storage) (*StripeHandler, error) {
+	if key == "" || productID == "" || webhookSecret == "" || storage == nil {
 		return nil, errors.New("missing required parameters")
 	}
 	stripe.Key = key
 	return &StripeHandler{
-		PriceId:       priceId,
+		ProductID:     productID,
 		MinQuantity:   minQuantity,
 		MaxQuantity:   maxQuantity,
 		DefaultAmount: defaultAmount,
@@ -64,15 +66,47 @@ func NewStripeClient(key, priceId, webhookSecret string, minQuantity, maxQuantit
 // The function constructs a stripe.CheckoutSessionParams object with the provided parameters and creates a new session using the session.New function.
 // If the session creation is successful, it returns the session pointer, otherwise it returns an error.
 func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL, referral string) (*stripe.CheckoutSession, error) {
-	// search corresponding price tokens package
-	packName := fmt.Sprintf("pack_%d", defaultAmount)
-	priceParams := &stripe.PriceListParams{Active: stripe.Bool(true), LookupKeys: []*string{stripe.String(packName)}}
-	priceList := price.List(priceParams).PriceList()
-	// iterate price result
-	if len(priceList.Data) == 0 {
+	if defaultAmount <= 0 {
 		return nil, nil
 	}
-	params := &stripe.CheckoutSessionParams{
+	// get the different price packages
+	priceSearchParams := &stripe.PriceSearchParams{
+		SearchParams: stripe.SearchParams{
+			Query: fmt.Sprintf("product:'%s' AND active:'true'", s.ProductID),
+		},
+	}
+	priceSearchParams.Limit = stripe.Int64(100)
+	result := price.Search(priceSearchParams)
+	if result.Err() != nil {
+		return nil, result.Err()
+	}
+	var prices []stripe.Price
+	for result.Next() {
+		prices = append(prices, *result.Price())
+	}
+	var closestRoundedPrice *stripe.Price
+	// sorting prices in order to find the closest price to the default amount
+	sort.Slice(prices,
+		func(i, j int) bool {
+			return prices[i].TransformQuantity.DivideBy < prices[j].TransformQuantity.DivideBy
+		})
+	// find the closest price under the default amount
+	index := sort.Search(len(prices), func(i int) bool {
+		return prices[i].TransformQuantity.DivideBy > defaultAmount
+	})
+	if index == 0 {
+		closestRoundedPrice = &prices[0]
+	} else if index <= len(prices) {
+		closestRoundedPrice = &prices[index-1]
+	}
+	if closestRoundedPrice == nil {
+		return nil, nil
+	}
+	// calculate the price per token according to the package and
+	// round in order to fullfill the two decimals limits limitation of stripe
+	tempCalc := math.Round(float64(float64(closestRoundedPrice.UnitAmount) / float64(closestRoundedPrice.TransformQuantity.DivideBy) * float64(defaultAmount)))
+
+	checkoutParams := &stripe.CheckoutSessionParams{
 		ClientReferenceID: stripe.String(to),
 		UIMode:            stripe.String("embedded"),
 		Mode:              stripe.String(string(stripe.CheckoutSessionModePayment)),
@@ -80,9 +114,9 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 		LineItems: []*stripe.CheckoutSessionLineItemParams{
 			{
 				PriceData: &stripe.CheckoutSessionLineItemPriceDataParams{
-					Product:           &priceList.Data[0].Product.ID,
-					Currency:          (*string)(&priceList.Data[0].Currency),
-					UnitAmountDecimal: &priceList.Data[0].UnitAmountDecimal,
+					Product:           &s.ProductID,
+					Currency:          stripe.String(string(closestRoundedPrice.Currency)),
+					UnitAmountDecimal: stripe.Float64(tempCalc),
 				},
 				Quantity: stripe.Int64(1),
 			},
@@ -92,7 +126,7 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 			"referral": referral,
 		},
 	}
-	ses, err := session.New(params)
+	ses, err := session.New(checkoutParams)
 	if err != nil {
 		return nil, err
 	}
