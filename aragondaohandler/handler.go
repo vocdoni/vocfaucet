@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -102,7 +102,7 @@ func IsAragonDaoAddress(addr common.Address, network string) (bool, error) {
 	defer resp.Body.Close()
 
 	var body []byte
-	if body, err = ioutil.ReadAll(resp.Body); err != nil {
+	if body, err = io.ReadAll(resp.Body); err != nil {
 		return false, err
 	}
 
