@@ -104,7 +104,7 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 	}
 	// calculate the price per token according to the package and
 	// round in order to fullfill the two decimals limits limitation of stripe
-	tempCalc := math.Round(float64(float64(closestRoundedPrice.UnitAmount) / float64(closestRoundedPrice.TransformQuantity.DivideBy) * float64(defaultAmount)))
+	tempCalc := math.Round(float64(float64(closestRoundedPrice.UnitAmount) / float64(closestRoundedPrice.TransformQuantity.DivideBy)))
 
 	checkoutParams := &stripe.CheckoutSessionParams{
 		ClientReferenceID: stripe.String(to),
@@ -118,7 +118,7 @@ func (s *StripeHandler) CreateCheckoutSession(defaultAmount int64, to, returnURL
 					Currency:          stripe.String(string(closestRoundedPrice.Currency)),
 					UnitAmountDecimal: stripe.Float64(tempCalc),
 				},
-				Quantity: stripe.Int64(1),
+				Quantity: stripe.Int64(defaultAmount),
 			},
 		},
 		Metadata: map[string]string{
