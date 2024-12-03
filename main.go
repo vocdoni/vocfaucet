@@ -43,8 +43,6 @@ func main() {
 	flag.StringP("dbType", "t", db.TypePebble, fmt.Sprintf("key-value db type [%s,%s,%s]", db.TypePebble, db.TypeLevelDB, db.TypeMongo))
 	flag.String("stripeKey", "", "stripe secret key")
 	flag.String("stripeProductID", "", "stripe price id")
-	flag.Int64("stripeMinQuantity", 100, "stripe min number of tokens")
-	flag.Int64("stripeMaxQuantity", 100000, "stripe max number of tokens")
 	flag.String("stripeWebhookSecret", "", "stripe webhook secret key")
 	flag.Parse()
 
@@ -101,12 +99,6 @@ func main() {
 	if err := viper.BindPFlag("stripeProductID", flag.Lookup("stripeProductID")); err != nil {
 		panic(err)
 	}
-	if err := viper.BindPFlag("stripeMinQuantity", flag.Lookup("stripeMinQuantity")); err != nil {
-		panic(err)
-	}
-	if err := viper.BindPFlag("stripeMaxQuantity", flag.Lookup("stripeMaxQuantity")); err != nil {
-		panic(err)
-	}
 	if err := viper.BindPFlag("stripeWebhookSecret", flag.Lookup("stripeWebhookSecret")); err != nil {
 		panic(err)
 	}
@@ -150,8 +142,6 @@ func main() {
 	dbType := viper.GetString("dbType")
 	stripeKey := viper.GetString("stripeKey")
 	stripeProductID := viper.GetString("stripeProductID")
-	stripeMinQuantity := viper.GetInt64("stripeMinQuantity")
-	stripeMaxQuantity := viper.GetInt64("stripeMaxQuantity")
 	stripeWebhookSecret := viper.GetString("stripeWebhookSecret")
 
 	// parse auth types and amounts
@@ -217,8 +207,6 @@ func main() {
 			stripeKey,
 			stripeProductID,
 			stripeWebhookSecret,
-			stripeMinQuantity,
-			stripeMaxQuantity,
 			int64(amount),
 			&f,
 			storage,

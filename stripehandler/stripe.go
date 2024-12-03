@@ -21,8 +21,6 @@ import (
 type StripeHandler struct {
 	Key           string           // The API key for the Stripe account.
 	ProductID     string           // The ID of the price associated with the product.
-	MinQuantity   int64            // The minimum quantity allowed for the product.
-	MaxQuantity   int64            // The maximum quantity allowed for the product.
 	DefaultAmount int64            // The default amount for the product.
 	WebhookSecret string           // The secret used to verify Stripe webhook events.
 	Storage       *storage.Storage // The storage instance for the faucet.
@@ -42,15 +40,13 @@ type ReturnStatus struct {
 // NewStripeClient creates a new instance of the StripeHandler struct with the provided parameters.
 // It sets the Stripe API key, price ID, webhook secret, minimum quantity, maximum quantity, and default amount.
 // Returns a pointer to the created StripeHandler.
-func NewStripeClient(key, productID, webhookSecret string, minQuantity, maxQuantity, defaultAmount int64, faucet *faucet.Faucet, storage *storage.Storage) (*StripeHandler, error) {
+func NewStripeClient(key, productID, webhookSecret string, defaultAmount int64, faucet *faucet.Faucet, storage *storage.Storage) (*StripeHandler, error) {
 	if key == "" || productID == "" || webhookSecret == "" || storage == nil {
 		return nil, errors.New("missing required parameters")
 	}
 	stripe.Key = key
 	return &StripeHandler{
 		ProductID:     productID,
-		MinQuantity:   minQuantity,
-		MaxQuantity:   maxQuantity,
 		DefaultAmount: defaultAmount,
 		WebhookSecret: webhookSecret,
 		Storage:       storage,
